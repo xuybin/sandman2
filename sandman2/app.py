@@ -64,7 +64,7 @@ def get_app(
         """Return a list of routes to the registered classes."""
         routes = {}
         for cls in app.classes:
-            routes[cls.__model__.__name__] = '{}{{/{}}}'.format(
+            routes[cls.__model__.__name__] = '{}/{{{}}}'.format(
                 cls.__model__.__url__,
                 cls.__model__.primary_key())
         return jsonify(routes)
@@ -145,12 +145,7 @@ def register_model(cls, admin=None):
     :param cls: Class deriving from :class:`sandman2.models.Model`
     """
     cls.__url__ = '/{}'.format(cls.__name__.lower())
-    service_class = type(
-        cls.__name__ + 'Service',
-        (Service,),
-        {
-            '__model__': cls,
-        })
+
 
     # inspect primary key
     cols = list(cls().__table__.primary_key.columns)
@@ -166,6 +161,16 @@ def register_model(cls, admin=None):
             primary_key_type = 'int'
         elif isinstance(col_type, sqltypes.Numeric):
             primary_key_type = 'float'
+    else:
+        primary_key_type = 'path'
+
+    service_class = type(
+        cls.__name__ + 'Service',
+        (Service,),
+        {
+            '__model__': cls,
+            '__resource_type__': primary_key_type,
+        })
 
     # registration
     register_service(service_class, primary_key_type)

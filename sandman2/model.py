@@ -69,9 +69,7 @@ class Model(object):
 
         :rtype: string
         """
-        return list(
-            cls.__table__.primary_key.columns)[  # pylint: disable=no-member
-                0].key
+        return list(cls.__table__.primary_key.columns)[0].key
 
     def to_dict(self):
         """Return the resource as a dictionary.

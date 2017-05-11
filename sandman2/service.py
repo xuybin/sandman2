@@ -60,6 +60,7 @@ class Service(MethodView):
 
     #: The sandman2.model.Model-derived class to expose
     __model__ = None
+    __resource_type__ = None
 
     #: The string used to describe the elements when a collection is
     #: returned.
@@ -164,7 +165,10 @@ class Service(MethodView):
         :returns: ``HTTP 200`` if a resource is updated
         :returns: ``HTTP 400`` if the request is malformed or missing data
         """
-        resource = self.__model__.query.get(resource_id)
+        if self.__resource_type__=='path':
+            resource = self.__model__.query.get(resource_id.split('/'))
+        else:
+            resource = self.__model__.query.get(resource_id)
         if resource:
             error_message = is_valid_method(self.__model__, resource)
             if error_message:
@@ -193,7 +197,10 @@ class Service(MethodView):
 
         :rtype: :class:`sandman2.model.Model`
         """
-        resource = self.__model__.query.get(resource_id)
+        if self.__resource_type__ == 'path':
+            resource = self.__model__.query.get(resource_id.split('/'))
+        else:
+            resource = self.__model__.query.get(resource_id)
         if not resource:
             raise NotFoundException()
         return resource
