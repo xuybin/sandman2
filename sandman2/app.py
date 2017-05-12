@@ -169,7 +169,6 @@ def register_model(cls, admin=None):
         (Service,),
         {
             '__model__': cls,
-            '__resource_type__': primary_key_type,
         })
 
     # registration

@@ -69,7 +69,11 @@ class Model(object):
 
         :rtype: string
         """
-        return list(cls.__table__.primary_key.columns)[0].key
+        pk_list=list(cls.__table__.primary_key.columns)
+        rt=""
+        for pkey in pk_list:
+            rt+=pkey.key+"/"
+        return rt.rstrip('/')
 
     def to_dict(self):
         """Return the resource as a dictionary.
@@ -96,9 +100,10 @@ class Model(object):
         for relationship in inspect(  # pylint: disable=maybe-no-member
                 self.__class__).relationships:
             if 'collection' not in relationship.key:
-                instance = getattr(self, relationship.key)
-                if instance:
-                    link_dict[str(relationship.key)] = instance.resource_uri()
+                # instance = getattr(self, relationship.key)
+                # if instance:
+                #     link_dict[str(relationship.key)] = instance.resource_uri()
+                link_dict[str(relationship.key)] = str(relationship.primaryjoin)
         return link_dict
 
     def resource_uri(self):
@@ -107,7 +112,12 @@ class Model(object):
         :rtype: str
 
         """
-        return self.__url__ + '/' + str(getattr(self, self.primary_key()))
+
+        pk_list = list(self.__table__.primary_key.columns)
+        rt = self.__url__ + '/'
+        for pkey in pk_list:
+            rt += str(getattr(self, pkey.key)) + "/"
+        return rt.rstrip('/')
 
     def update(self, attributes):
         """Update the current instance based on attribute->value items in

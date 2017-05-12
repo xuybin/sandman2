@@ -5,6 +5,7 @@ ORM models or a database introspection."""
 from flask import request, make_response
 import flask
 from flask.views import MethodView
+from sqlalchemy.sql import sqltypes
 
 # Application imports
 from sandman2.exception import NotFoundException, BadRequestException
@@ -21,10 +22,12 @@ def add_link_headers(response, links):
     :param dict links: Dictionary of links to be added
     :rtype :class:`flask.Response` :
     """
-    link_string = '<{}>; rel=self'.format(links['self'])
+    # link_string = '<{}>; rel=self'.format(links['self'])
+    link_string = '<{}>; rel=related'.format(links['self'])
+    links.pop('self')
     for link in links.values():
         link_string += ', <{}>; rel=related'.format(link)
-    response.headers['Link'] = link_string
+    response.headers['Link'] = link_string.rstrip("rel=related")
     return response
 
 
@@ -48,8 +51,8 @@ def is_valid_method(model, resource=None):
     if hasattr(model, validation_function_name):
         return getattr(model, validation_function_name)(request, resource)
 
-class Service(MethodView):
 
+class Service(MethodView):
     """The *Service* class is a generic extension of Flask's *MethodView*,
     providing default RESTful functionality for a given ORM resource.
 
@@ -60,7 +63,6 @@ class Service(MethodView):
 
     #: The sandman2.model.Model-derived class to expose
     __model__ = None
-    __resource_type__ = None
 
     #: The string used to describe the elements when a collection is
     #: returned.
@@ -96,12 +98,12 @@ class Service(MethodView):
             if error_message:
                 raise BadRequestException(error_message)
 
-            if 'export' in request.args: 
+            if 'export' in request.args:
                 return self._export(self._all_resources())
 
             return flask.jsonify({
                 self.__json_collection_name__: self._all_resources()
-                })
+            })
         else:
             resource = self._resource(resource_id)
             error_message = is_valid_method(self.__model__, resource)
@@ -165,7 +167,7 @@ class Service(MethodView):
         :returns: ``HTTP 200`` if a resource is updated
         :returns: ``HTTP 400`` if the request is malformed or missing data
         """
-        if self.__resource_type__=='path':
+        if len(self.__model__.__table__.primary_key.columns) > 1:
             resource = self.__model__.query.get(resource_id.split('/'))
         else:
             resource = self.__model__.query.get(resource_id)
@@ -179,6 +181,19 @@ class Service(MethodView):
             return jsonify(resource)
 
         resource = self.__model__(**request.json)  # pylint: disable=not-callable
+
+        pkey_vals=resource_id.split('/')
+        for i, pkey in enumerate(self.__model__.__table__.primary_key.columns):
+            pkey_type = pkey.type
+            pkey_name = pkey.key
+            pkey_value = pkey_vals[i]
+            if isinstance(pkey_type, sqltypes.Integer):
+                setattr(resource, pkey_name, int(pkey_value))
+            elif isinstance(pkey_type, sqltypes.Numeric):
+                setattr(resource, pkey_name, float(pkey_value))
+            else:
+                setattr(resource, pkey_name, pkey_value)
+            pass
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
             raise BadRequestException(error_message)
@@ -197,7 +212,7 @@ class Service(MethodView):
 
         :rtype: :class:`sandman2.model.Model`
         """
-        if self.__resource_type__ == 'path':
+        if len(self.__model__.__table__.primary_key.columns) > 1:
             resource = self.__model__.query.get(resource_id.split('/'))
         else:
             resource = self.__model__.query.get(resource_id)
@@ -247,7 +262,6 @@ class Service(MethodView):
         response = make_response(faux_csv)
         response.mimetype = 'text/csv'
         return response
-
 
     @staticmethod
     def _no_content_response():
