@@ -97,3 +97,8 @@ If `sandman2ctl` doesn't give you fine-grained enough control over your REST
 endpoints, or you'd like to restrict the set of tables made available via
 `sandman2ctl`, you can easily integrate `sandman2` into your application. See
 the [documentation](http://sandman2.readthedocs.io/en/latest/) for more info.
+
+todo
+ 扩展 link 带出字段值
+ 扩展 分页大小指定
+ 扩展 分页指示
