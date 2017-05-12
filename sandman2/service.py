@@ -23,11 +23,12 @@ def add_link_headers(response, links):
     :rtype :class:`flask.Response` :
     """
     # link_string = '<{}>; rel=self'.format(links['self'])
-    link_string = '<{}>; rel=related'.format(links['self'])
-    links.pop('self')
-    for link in links.values():
-        link_string += ', <{}>; rel=related'.format(link)
-    response.headers['Link'] = link_string.rstrip("rel=related")
+    link_string = ''
+    if len(links)>0:
+        for link in links.values():
+            link_string += '<{}>;'.format(link)
+        response.headers['Link'] = link_string.rstrip(";")
+    pass
     return response
 
 

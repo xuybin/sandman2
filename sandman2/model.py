@@ -96,7 +96,8 @@ class Model(object):
         :rtype: dict
 
         """
-        link_dict = {'self': self.resource_uri()}
+        # link_dict = {'self': self.resource_uri()}
+        link_dict={}
         for relationship in inspect(  # pylint: disable=maybe-no-member
                 self.__class__).relationships:
             if 'collection' not in relationship.key:
