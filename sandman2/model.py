@@ -46,6 +46,7 @@ class Model(object):
         """
         columns = []
         for column in cls.__table__.columns:  # pylint: disable=no-member
+            # has bug with sqlite,autoincrement===true
             is_autoincrement = 'int' in str(column.type).lower() and column.autoincrement
             if (not column.nullable and not column.primary_key) or (column.primary_key and not is_autoincrement):
                 columns.append(column.name)

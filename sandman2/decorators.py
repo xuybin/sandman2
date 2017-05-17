@@ -59,14 +59,14 @@ def validate_fields(func):
         """The decorator function."""
         data = request.get_json(force=True, silent=True)
         if not data:
-            raise BadRequestException('No data received from request')
+            raise BadRequestException('No data received from request',{'error':'Invalid Json'})
         for key in data:
             if key not in (
                     instance.__model__.required() +
                     instance.__model__.optional()):
-                raise BadRequestException('Unknown field [{}]'.format(key))
+                raise BadRequestException('Unknown field [{}]'.format(key),{'error':'Invalid Parameter'})
         for required in set(instance.__model__.required()):
             if required not in data:
-                raise BadRequestException('[{}] required'.format(required))
+                raise BadRequestException('[{}] required'.format(required),{'error':'Invalid Json'})
         return func(instance, *args, **kwargs)
     return decorated

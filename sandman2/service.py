@@ -78,7 +78,7 @@ class Service(MethodView):
         resource = self._resource(resource_id)
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
-            raise BadRequestException('Invalid Action',error_message)
+            raise BadRequestException(error_message,{'error':'Invalid Action'})
         db.session().delete(resource)
         db.session().commit()
         return self._no_content_response()

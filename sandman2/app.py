@@ -108,7 +108,7 @@ def register_service(cls, primary_key_type):
             view_func=view_func,
             methods=['GET'])
         current_app.add_url_rule(
-            '{resource}/meta'.format(resource=cls.__model__.__url__),
+            '{resource}/'.format(resource=cls.__model__.__url__),
             view_func=view_func,
             methods=['GET'])
     if 'POST' in methods:  # pylint: disable=no-member
@@ -119,7 +119,7 @@ def register_service(cls, primary_key_type):
             resource=cls.__model__.__url__,
             pk='resource_id', pk_type=primary_key_type),
         view_func=view_func,
-        methods=methods - {'POST'})
+        methods=methods - {'POST','OPTIONS'})
     current_app.classes.append(cls)
 
 
