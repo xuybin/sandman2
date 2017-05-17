@@ -5,13 +5,14 @@ ORM models or a database introspection."""
 from flask import request, make_response
 import flask
 from flask.views import MethodView
+from flask_sqlalchemy import Pagination
 from sqlalchemy.sql import sqltypes
 
 # Application imports
 from sandman2.exception import NotFoundException, BadRequestException
 from sandman2.model import db
 from sandman2.decorators import etag, validate_fields
-
+import math
 
 def add_link_headers(response, links):
     """Return *response* with the proper link headers set, based on the contents
@@ -32,7 +33,7 @@ def add_link_headers(response, links):
     return response
 
 
-def jsonify(resource):
+def jsonify(resource): #del
     """Return a Flask ``Response`` object containing a
     JSON representation of *resource*.
 
@@ -77,7 +78,7 @@ class Service(MethodView):
         resource = self._resource(resource_id)
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
-            raise BadRequestException(error_message)
+            raise BadRequestException('Invalid Action',error_message)
         db.session().delete(resource)
         db.session().commit()
         return self._no_content_response()
@@ -97,19 +98,20 @@ class Service(MethodView):
         if resource_id is None:
             error_message = is_valid_method(self.__model__)
             if error_message:
-                raise BadRequestException(error_message)
+                raise BadRequestException(error_message,{'error':'Invalid Action'})
 
             if 'export' in request.args:
                 return self._export(self._all_resources())
 
-            return flask.jsonify({
-                self.__json_collection_name__: self._all_resources()
-            })
+            # return flask.jsonify({
+            #     self.__json_collection_name__: self._all_resources()
+            # })
+            return flask.jsonify( self._all_resources())
         else:
             resource = self._resource(resource_id)
             error_message = is_valid_method(self.__model__, resource)
             if error_message:
-                raise BadRequestException(error_message)
+                raise BadRequestException(error_message,{'error':'Invalid Action'})
             return jsonify(resource)
 
     def patch(self, resource_id):
@@ -123,9 +125,9 @@ class Service(MethodView):
         resource = self._resource(resource_id)
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
-            raise BadRequestException(error_message)
+            raise BadRequestException(error_message,{'error':'Invalid Action'})
         if not request.json:
-            raise BadRequestException('No JSON data received')
+            raise BadRequestException('No JSON data received',{'error':'Invalid Json'})
         resource.update(request.json)
         db.session().merge(resource)
         db.session().commit()
@@ -144,13 +146,13 @@ class Service(MethodView):
         if resource:
             error_message = is_valid_method(self.__model__, resource)
             if error_message:
-                raise BadRequestException(error_message)
+                raise BadRequestException(error_message,{'error':'Invalid Action'})
             return self._no_content_response()
 
         resource = self.__model__(**request.json)  # pylint: disable=not-callable
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
-            raise BadRequestException(error_message)
+            raise BadRequestException(error_message,{'error':'Invalid Action'})
         db.session().add(resource)
         db.session().commit()
         return self._created_response(resource)
@@ -175,7 +177,7 @@ class Service(MethodView):
         if resource:
             error_message = is_valid_method(self.__model__, resource)
             if error_message:
-                raise BadRequestException(error_message)
+                raise BadRequestException(error_message,{'error':'Invalid Action'})
             resource.update(request.json)
             db.session().merge(resource)
             db.session().commit()
@@ -197,7 +199,7 @@ class Service(MethodView):
             pass
         error_message = is_valid_method(self.__model__, resource)
         if error_message:
-            raise BadRequestException(error_message)
+            raise BadRequestException(error_message,{'error':'Invalid Action'})
         db.session().add(resource)
         db.session().commit()
         return self._created_response(resource)
@@ -228,7 +230,7 @@ class Service(MethodView):
         :rtype: :class:`sandman2.model.Model`
         """
         queryset = self.__model__.query
-        args = {k: v for (k, v) in request.args.items() if k not in ('page', 'export')}
+        args = {k: v for (k, v) in request.args.items() if k not in ('page','size','export')}
         if args:
             filters = []
             order = []
@@ -243,13 +245,32 @@ class Service(MethodView):
                 elif hasattr(self.__model__, key):
                     filters.append(getattr(self.__model__, key) == value)
                 else:
-                    raise BadRequestException('Invalid field [{}]'.format(key))
+                    raise BadRequestException('Invalid field [{}]'.format(key),{'error':'Invalid Parameter'})
                 queryset = queryset.filter(*filters).order_by(*order).limit(limit)
         if 'page' in request.args:
-            resources = queryset.paginate(int(request.args['page'])).items
+            page=1
+            size = 10
+            try:
+                page = int(request.args['page'])
+            except ValueError as e:
+                raise BadRequestException('Invalid page parameter value [{}]'.format(request.args['page']),{'error':'Invalid Parameter'})
+
+            if 'size' in request.args:
+                try:
+                    size = int(request.args['size'])
+                except ValueError as e:
+                    raise BadRequestException('Invalid size parameter value [{}]'.format(request.args['size']),{'error':'Invalid Parameter'})
+            pagination = queryset.paginate(page,size)
+            return {
+                'pageIndex':page
+                ,'pageSize': size
+                ,'totalPages': math.ceil(pagination.total/size)
+                ,'totalCount': pagination.total
+                ,'data': [r.to_dict() for r in pagination.items]
+            }
         else:
             resources = queryset.all()
-        return [r.to_dict() for r in resources]
+            return  [r.to_dict() for r in resources]
 
     def _export(self, collection):
         """Return a CSV of the resources in *collection*.
