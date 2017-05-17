@@ -277,12 +277,15 @@ class Service(MethodView):
 
         :param list collection: A list of resources represented by dicts
         """
+        if 'pageIndex' in collection:
+            collection=collection['data']
         fieldnames = collection[0].keys()
         faux_csv = ','.join(fieldnames) + '\r\n'
         for resource in collection:
             faux_csv += ','.join((str(x) for x in resource.values())) + '\r\n'
         response = make_response(faux_csv)
         response.mimetype = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment;filename={}.csv'.format(request.path.strip("/"))
         return response
 
     @staticmethod
